@@ -86,11 +86,15 @@ impl Cmd {
 
 impl Basic {
     pub async fn run(&self, opts: Opts) -> Result {
-        let seed_words = if self.seed {
-            Some(get_seed_words()?)
-        } else {
-            None
-        };
+        let seed_words = if self.seed { get_seed_words()? } 
+            else {
+                mnemonic::Mnemonic::generate(mnemonic::Language::English).words
+            };
+
+        if !self.seed {
+            print_seed(&seed_words);
+        }
+
         let password = get_password(true)?;
         let tag = KeyTag {
             network: self.network,
@@ -109,11 +113,15 @@ impl Basic {
 
 impl Sharded {
     pub async fn run(&self, opts: Opts) -> Result {
-        let seed_words = if self.seed {
-            Some(get_seed_words()?)
-        } else {
-            None
-        };
+        let seed_words = if self.seed { get_seed_words()? } 
+            else {
+                mnemonic::Mnemonic::generate(mnemonic::Language::English).words
+            };
+
+        if !self.seed {
+            print_seed(&seed_words);
+        }
+
         let password = get_password(true)?;
         let tag = KeyTag {
             network: self.network,
@@ -141,14 +149,9 @@ impl Sharded {
     }
 }
 
-fn gen_keypair(tag: KeyTag, seed_words: Option<Vec<String>>) -> Result<Keypair> {
-    match seed_words {
-        Some(words) => {
-            let entropy = mnemonic_to_entropy(words)?;
-            Keypair::generate_from_entropy(tag, &entropy)
-        }
-        None => Ok(Keypair::generate(tag)),
-    }
+fn gen_keypair(tag: KeyTag, seed_words: Vec<String>) -> Result<Keypair> {
+    let entropy = mnemonic_to_entropy(seed_words)?;
+    Keypair::generate_from_entropy(tag, &entropy)
 }
 
 fn open_output_file(filename: &Path, create: bool) -> io::Result<fs::File> {

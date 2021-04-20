@@ -1,10 +1,49 @@
 use crate::result::{bail, Result};
+use rand::{rngs::OsRng, RngCore};
 use regex::Regex;
+use std::result::Result as StdResult;
+use std::str;
 
 include!(concat!(env!("OUT_DIR"), "/english.rs"));
 
+pub struct Mnemonic {
+    pub words: Vec<String>,
+    pub language: Language,
+}
+
+impl Mnemonic {
+    pub fn generate(language: Language) -> Self {
+        let word_list = get_wordlist(language.clone());
+        let mut words: Vec<String> = Vec::new();
+
+        let mut entropy = [0u8; 16];
+        OsRng.fill_bytes(&mut entropy);
+
+        //Maintain compatibility with mobile wallet which has a broken checksum implementation.
+        let checksum = "0000";
+        let mut bits: String = entropy.iter().map(|b| format!("{:08b}", b)).collect();
+        bits.push_str(checksum);
+        let chunks = bits
+            .as_bytes()
+            .chunks(11)
+            .map(str::from_utf8)
+            .collect::<StdResult<Vec<&str>, _>>()
+            .unwrap();
+        for c in chunks {
+            let index = usize::from_str_radix(c, 2).unwrap();
+            words.push(word_list[index].into());
+        }
+        Self { words, language }
+    }
+
+    pub fn words(&self) -> String {
+        self.words.join(" ")
+    }
+}
+
 type WordList = &'static [&'static str];
 
+#[derive(Clone)]
 pub enum Language {
     English,
 }

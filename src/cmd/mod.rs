@@ -13,6 +13,7 @@ use std::{
     env, fs, io,
     path::{Path, PathBuf},
 };
+use prettytable::{format, Table};
 pub use structopt::{clap::arg_enum, StructOpt};
 
 pub mod balance;
@@ -142,6 +143,7 @@ fn collect_addresses(files: Vec<PathBuf>, mut addresses: Vec<PublicKey>) -> Resu
 
 fn get_seed_words() -> Result<Vec<String>> {
     use dialoguer::Input;
+    
     let split_str = |s: &String| s.split_whitespace().map(|w| w.to_string()).collect();
     let word_string = Input::<String>::new()
         .with_prompt("Seed Words")
@@ -219,6 +221,15 @@ pub fn print_json<T: ?Sized + serde::Serialize>(value: &T) -> Result {
 pub fn print_table(table: &prettytable::Table) -> Result {
     table.printstd();
     Ok(())
+}
+
+pub fn print_seed(seed_words: &Vec<String>) {
+    let words = seed_words.join(" ");
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+    table.set_titles(row!["Wallet Seed -- Back this up somewhere safe!"]);
+    table.add_row(row![words]);
+    table.printstd();
 }
 
 pub fn status_str(status: &Option<PendingTxnStatus>) -> &str {
