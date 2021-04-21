@@ -6,38 +6,27 @@ use std::str;
 
 include!(concat!(env!("OUT_DIR"), "/english.rs"));
 
-pub struct Mnemonic {
-    pub words: Vec<String>,
-    pub language: Language,
-}
+pub fn generate_mnemonic(language: Language) -> Vec<String> {
+    let mut entropy = [0u8; 16];
+    OsRng.fill_bytes(&mut entropy);
 
-impl Mnemonic {
-    pub fn generate(language: Language) -> Self {
-        let mut entropy = [0u8; 16];
-        OsRng.fill_bytes(&mut entropy);
+    //Maintain compatibility with mobile wallet which has a broken checksum implementation.
+    let checksum = "0000";
+    let mut bits: String = entropy.iter().map(|b| format!("{:08b}", b)).collect();
+    bits.push_str(checksum);
 
-        //Maintain compatibility with mobile wallet which has a broken checksum implementation.
-        let checksum = "0000";
-        let mut bits: String = entropy.iter().map(|b| format!("{:08b}", b)).collect();
-        bits.push_str(checksum);
-
-        lazy_static! {
-            static ref IDX_BYTES: Regex = Regex::new("(.{1,11})").unwrap();
-        }
-
-        let word_list = get_wordlist(language.clone());
-        let mut words: Vec<String> = Vec::new();
-        for matched in IDX_BYTES.find_iter(&bits) {
-            let idx = binary_to_bytes(matched.as_str());
-            words.push(word_list[idx].into());
-        }
-
-        Self { words, language }
+    lazy_static! {
+        static ref IDX_BYTES: Regex = Regex::new("(.{1,11})").unwrap();
     }
 
-    pub fn words(&self) -> String {
-        self.words.join(" ")
+    let word_list = get_wordlist(language.clone());
+    let mut words: Vec<String> = Vec::new();
+    for matched in IDX_BYTES.find_iter(&bits) {
+        let idx = binary_to_bytes(matched.as_str());
+        words.push(word_list[idx].into());
     }
+
+    words
 }
 
 type WordList = &'static [&'static str];
