@@ -1,7 +1,7 @@
 use crate::result::{bail, Result};
 use rand::{rngs::OsRng, RngCore};
 use regex::Regex;
-use std::result::Result as StdResult;
+// use std::result::Result as StdResult;
 use std::str;
 
 include!(concat!(env!("OUT_DIR"), "/english.rs"));
@@ -13,9 +13,6 @@ pub struct Mnemonic {
 
 impl Mnemonic {
     pub fn generate(language: Language) -> Self {
-        let word_list = get_wordlist(language.clone());
-        let mut words: Vec<String> = Vec::new();
-
         let mut entropy = [0u8; 16];
         OsRng.fill_bytes(&mut entropy);
 
@@ -23,16 +20,18 @@ impl Mnemonic {
         let checksum = "0000";
         let mut bits: String = entropy.iter().map(|b| format!("{:08b}", b)).collect();
         bits.push_str(checksum);
-        let chunks = bits
-            .as_bytes()
-            .chunks(11)
-            .map(str::from_utf8)
-            .collect::<StdResult<Vec<&str>, _>>()
-            .unwrap();
-        for c in chunks {
-            let index = usize::from_str_radix(c, 2).unwrap();
-            words.push(word_list[index].into());
+
+        lazy_static! {
+            static ref IDX_BYTES: Regex = Regex::new("(.{1,11})").unwrap();
         }
+
+        let word_list = get_wordlist(language.clone());
+        let mut words: Vec<String> = Vec::new();
+        for matched in IDX_BYTES.find_iter(&bits) {
+            let idx = binary_to_bytes(matched.as_str());
+            words.push(word_list[idx].into());
+        }
+
         Self { words, language }
     }
 
@@ -107,7 +106,7 @@ mod tests {
 
     #[test]
     fn decode_words() {
-        // The words and entryopy here were generated from the JS mobile-wallet implementation
+        // The words and entropy here were generated from the JS mobile-wallet implementation
         let words = "catch poet clog intact scare jacket throw palm illegal buyer allow figure";
         let expected_entropy = bs58::decode("3RrA1FDa6mdw5JwKbUxEbZbMcJgSyWjhNwxsbX5pSos8")
             .into_vec()
