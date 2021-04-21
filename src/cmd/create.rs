@@ -88,7 +88,8 @@ impl Basic {
     pub async fn run(&self, opts: Opts) -> Result {
         let seed_words = if self.seed { get_seed_words()? } 
             else {
-                mnemonic::generate_mnemonic(mnemonic::Language::English)
+                let entropy = mnemonic::get_entropy();
+                mnemonic::entropy_to_mnemonic(entropy, mnemonic::Language::English)
             };
 
         if !self.seed {
@@ -115,7 +116,8 @@ impl Sharded {
     pub async fn run(&self, opts: Opts) -> Result {
         let seed_words = if self.seed { get_seed_words()? } 
             else {
-                mnemonic::generate_mnemonic(mnemonic::Language::English)
+                let entropy = mnemonic::get_entropy();
+                mnemonic::entropy_to_mnemonic(entropy, mnemonic::Language::English)
             };
 
         if !self.seed {

@@ -1,15 +1,17 @@
 use crate::result::{bail, Result};
 use rand::{rngs::OsRng, RngCore};
 use regex::Regex;
-// use std::result::Result as StdResult;
 use std::str;
 
 include!(concat!(env!("OUT_DIR"), "/english.rs"));
 
-pub fn generate_mnemonic(language: Language) -> Vec<String> {
+pub fn get_entropy() -> [u8; 16] {
     let mut entropy = [0u8; 16];
     OsRng.fill_bytes(&mut entropy);
+    entropy
+}
 
+pub fn entropy_to_mnemonic(entropy: [u8; 16], language: Language) -> Vec<String> {
     //Maintain compatibility with mobile wallet which has a broken checksum implementation.
     let checksum = "0000";
     let mut bits: String = entropy.iter().map(|b| format!("{:08b}", b)).collect();
@@ -104,5 +106,43 @@ mod tests {
         let word_list = words.split_whitespace().map(|w| w.to_string()).collect();
         let entropy = mnemonic_to_entropy(word_list).expect("entropy");
         assert_eq!(expected_entropy, entropy);
+    }
+
+    #[test]
+    fn check_generated_mnemonic_len() {
+        let entropy = get_entropy();
+        let mnemonic = entropy_to_mnemonic(entropy, Language::English);
+        assert!(mnemonic.len() == 12);
+    }
+
+    #[test]
+    fn no_duplicate_mnemonics() {
+        let e1 = get_entropy();
+        let e2 = get_entropy();
+        let m1 = entropy_to_mnemonic(e1, Language::English);
+        let m2 = entropy_to_mnemonic(e2, Language::English);
+        assert_ne!(m1, m2);
+    }
+
+    #[test]
+    fn mnemonic_is_deterministic() {
+        let entropy = get_entropy();
+        let m1 = entropy_to_mnemonic(entropy.clone(), Language::English);
+        let m2 = entropy_to_mnemonic(entropy, Language::English);
+        assert_eq!(m1, m2);
+    }
+
+    #[test]
+    fn check_generated_mnemonic_word_list() {
+        let word_list = get_wordlist(Language::English);
+
+        let entropy = get_entropy();
+        let words = entropy_to_mnemonic(entropy, Language::English);
+        for word in words.iter() {
+            match word_list.iter().position(|s| *s == word.to_lowercase()) {
+                Some(_) => continue,
+                _ => assert!(false),
+            };
+        }
     }
 }
