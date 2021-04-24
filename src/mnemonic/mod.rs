@@ -5,12 +5,14 @@ use std::str;
 
 include!(concat!(env!("OUT_DIR"), "/english.rs"));
 
+/// Gets 16 bytes of entropy from a CSPRNG in the form of a [u8; 16]
 pub fn get_entropy() -> [u8; 16] {
     let mut entropy = [0u8; 16];
     OsRng.fill_bytes(&mut entropy);
     entropy
 }
 
+/// Generates a 12 word mnemonic from a provided entropy source of [u8; 16]
 pub fn entropy_to_mnemonic(entropy: [u8; 16], language: Language) -> Vec<String> {
     //Maintain compatibility with mobile wallet which has a broken checksum implementation.
     let checksum = "0000";
@@ -106,6 +108,24 @@ mod tests {
         let word_list = words.split_whitespace().map(|w| w.to_string()).collect();
         let entropy = mnemonic_to_entropy(word_list).expect("entropy");
         assert_eq!(expected_entropy, entropy);
+    }
+
+    #[test]
+    fn encode_words() {
+        let mut key_entropy = [0u8; 32];
+        let mut seed_entropy = [0u8; 16];
+
+        bs58::decode("3RrA1FDa6mdw5JwKbUxEbZbMcJgSyWjhNwxsbX5pSos8")
+            .into(&mut key_entropy)
+            .expect("decoded entropy");
+
+        seed_entropy.copy_from_slice(&key_entropy[..16]);
+
+        let words = "catch poet clog intact scare jacket throw palm illegal buyer allow figure";
+        let expected_word_list: Vec<String> =
+            words.split_whitespace().map(|w| w.to_string()).collect();
+        let mnemonic = entropy_to_mnemonic(seed_entropy, Language::English);
+        assert_eq!(expected_word_list, mnemonic);
     }
 
     #[test]
